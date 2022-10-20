@@ -1,18 +1,31 @@
 pipeline {
-    agent { label 'docker_agents' }
+    agent { label 'instance_agents' }
 
 
     stages {
         stage('Build') {
             steps {
-                // Get some code from a GitHub repository
-                //git 'git@github.com:Mo7amed-3laa2/jenkins_nodejs_example.git'
-
-                // build simple-app then run it as a container
-                sh "docker build --tag mohamedalaa98/simple-app-node:latest ."
-                sh "docker run -p 3000:3000 --name simple-app mohamedalaa98/simple-app-node:latest"
+                echo "Get some code from a GitHub repository"
+                echo "build simple-app docker file"
+                sh "docker build --tag mohamedalaa98/simple-app-node:${BUILD_ID} ."
             }
 
+        }
+        stage('Push') {
+            steps {
+                echo "push simple-app image to docker-hub"
+                withCredentials([usernamePassword(credentialsId: 'dockerhub',passwordVariable:'PASS', usernameVariable: 'USER')])
+                sh "echo $PASS | docker login -u $USER --password-stdin"
+                sh "docker push mohamedalaa98/simple-app-node:${BUILD_ID}" 
+            }
+            post {
+                success {
+                    slackSend color: "good", message: "github web-hook triggered! and build ${ BUILD_TAG } Succeeded !"
+                }
+                failure {
+                    slackSend color: "danger", message: "github web-hook triggered! and build ${ BUILD_TAG } Failed !!!"
+                }
+            } 
         }
     }
 }
